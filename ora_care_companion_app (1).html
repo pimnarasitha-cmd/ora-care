@@ -1,0 +1,1610 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>ORA-CARE: AI Oral Mucositis & Dosage Assistant</title>
+  
+  <!-- Web App & PWA Mobile Capabilities -->
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="theme-color" content="#6B143C">
+  <meta name="description" content="ORA-CARE: AI Oral Mucositis Evaluation & ORA-SOOTHE Bio-Film Dosage Assistant">
+
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- FontAwesome CDN -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <!-- Chart.js for healing trajectory curve -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              burgundy: '#6B143C',
+              burgundyDark: '#4A0B27',
+              burgundyLight: '#8C1D4F',
+              green: '#2D5A3F',
+              greenLight: '#3D7955',
+              gold: '#C5A038',
+              goldLight: '#E8CA65',
+              cream: '#FAF7F2',
+              creamDark: '#F2ECE1',
+            }
+          },
+          fontFamily: {
+            sans: ['Plus Jakarta Sans', 'Sarabun', 'sans-serif']
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Sarabun:wght@300;400;500;600;700&display=swap');
+    
+    body {
+      font-family: 'Plus Jakarta Sans', 'Sarabun', sans-serif;
+      background-color: #FAF7F2;
+      color: #2D3748;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    /* Print View */
+    @media print {
+      body * { visibility: hidden !important; }
+      #reportModalCard, #reportModalCard * { visibility: visible !important; }
+      #reportModalCard {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 100%;
+        margin: 0;
+        padding: 0;
+        border: none;
+        box-shadow: none;
+      }
+    }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col antialiased selection:bg-brand-burgundy selection:text-white">
+
+  <!-- Top Sticky Navigation Bar -->
+  <header class="sticky top-0 z-40 bg-white/95 backdrop-blur border-b border-brand-creamDark shadow-xs">
+    <div class="max-w-6xl mx-auto px-4 py-2.5 flex items-center justify-between">
+      
+      <!-- Brand & Project Identity -->
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-brand-burgundy to-brand-burgundyLight flex items-center justify-center text-brand-gold shadow-md shrink-0">
+          <i class="fa-solid fa-notes-medical text-lg"></i>
+        </div>
+        <div>
+          <div class="flex items-center gap-2">
+            <h1 class="text-lg sm:text-xl font-bold tracking-tight text-brand-burgundy">ORA-CARE</h1>
+            <span class="text-[10px] font-semibold bg-brand-gold/20 text-brand-burgundy border border-brand-gold/40 px-2 py-0.5 rounded-full uppercase tracking-wider">PWA v2.4</span>
+          </div>
+          <p class="text-[11px] text-gray-500 hidden sm:block">Companion App for ORA-SOOTHE 2-in-1 Bio-Film • Montfort College</p>
+        </div>
+      </div>
+
+      <!-- Actions & Language Switcher -->
+      <div class="flex items-center gap-2">
+        <button onclick="openHistoryModal()" class="text-xs font-semibold px-2.5 py-1.5 rounded-lg border border-gray-200 text-gray-700 hover:bg-gray-100 flex items-center gap-1.5">
+          <i class="fa-solid fa-clock-rotate-left text-brand-gold"></i>
+          <span class="hidden sm:inline" data-i18n="history_records">History</span>
+        </button>
+
+        <!-- EN/TH Language Switcher -->
+        <div class="bg-gray-100 p-1 rounded-xl border border-gray-200 flex text-xs font-bold">
+          <button id="btnLangTh" onclick="setAppLanguage('th')" class="px-2.5 py-1 rounded-lg transition bg-brand-burgundy text-white shadow-xs">TH</button>
+          <button id="btnLangEn" onclick="setAppLanguage('en')" class="px-2.5 py-1 rounded-lg transition text-gray-600 hover:text-black">EN</button>
+        </div>
+
+        <!-- Help Guide Modal Trigger -->
+        <button onclick="toggleHowItWorks(true)" class="text-gray-500 hover:text-brand-burgundy p-2 text-sm rounded-lg hover:bg-gray-100" title="System Guidance">
+          <i class="fa-regular fa-circle-question text-lg"></i>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Botanical Science Banner -->
+  <section class="bg-gradient-to-r from-brand-burgundyDark via-brand-burgundy to-brand-green text-white py-2.5 px-4 shadow-inner">
+    <div class="max-w-6xl mx-auto flex flex-col md:flex-row items-center justify-between text-xs gap-2">
+      <div class="flex items-center gap-2 text-center md:text-left">
+        <span class="text-brand-gold font-bold"><i class="fa-solid fa-shield-virus mr-1"></i> WHO Toxicity Protocol:</span>
+        <span id="bannerTagline">ประเมินขนาดแผลในช่องปาก & คำนวณปริมาณการแปะ ORA-SOOTHE อัตโนมัติ</span>
+      </div>
+      <div class="flex items-center gap-4 text-brand-cream/90 text-[11px]">
+        <span><i class="fa-solid fa-leaf text-brand-gold mr-1"></i> Okra Mucilage 75%</span>
+        <span><i class="fa-solid fa-seedling text-brand-gold mr-1"></i> Riceberry C3G 15%</span>
+        <span><i class="fa-solid fa-wand-magic-sparkles text-brand-gold mr-1"></i> Spilanthol 8%</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- Main Workspace -->
+  <main class="max-w-6xl mx-auto px-4 py-5 flex-1 w-full space-y-6">
+
+    <!-- Top Diagnostic Mode Switcher: Option A vs Option B -->
+    <div class="bg-white rounded-2xl p-1.5 border border-stone-200 shadow-sm flex max-w-xl mx-auto">
+      <button onclick="switchDiagnosticTab('questionnaire')" id="tab-btn-quiz" class="flex-1 py-2.5 px-3 rounded-xl text-xs sm:text-sm font-bold transition flex items-center justify-center gap-2 bg-brand-burgundy text-white shadow-xs">
+        <i class="fa-solid fa-clipboard-list text-brand-gold"></i>
+        <span data-i18n="tab_quiz_title">ตัวเลือก 1: แบบประเมินอาการ (ไม่สะดวกถ่ายภาพ)</span>
+      </button>
+      <button onclick="switchDiagnosticTab('photo')" id="tab-btn-photo" class="flex-1 py-2.5 px-3 rounded-xl text-xs sm:text-sm font-bold transition flex items-center justify-center gap-2 text-gray-600 hover:text-gray-900">
+        <i class="fa-solid fa-camera-rotate text-brand-green"></i>
+        <span data-i18n="tab_photo_title">ตัวเลือก 2: ถ่ายภาพเทียบสเกล</span>
+      </button>
+    </div>
+
+    <!-- ============================================== -->
+    <!-- PATHWAY 1: CLINICAL QUESTIONNAIRE (NO PHOTO)   -->
+    <!-- ============================================== -->
+    <section id="tab-view-quiz" class="space-y-4">
+      <div class="bg-white rounded-3xl p-5 sm:p-6 border border-stone-200 shadow-sm space-y-5">
+        <div>
+          <h2 class="text-base sm:text-lg font-bold text-gray-900 flex items-center gap-2">
+            <i class="fa-solid fa-user-doctor text-brand-burgundy"></i>
+            <span data-i18n="quiz_title">แบบประเมินสำหรับผู้ป่วย (ไม่สะดวกถ่ายภาพ)</span>
+          </h2>
+          <p class="text-xs text-gray-500 mt-0.5" data-i18n="quiz_subtitle">ประเมินระดับความรุนแรงตามเกณฑ์มาตรฐานทางการแพทย์ WHO Oral Toxicity Scale</p>
+        </div>
+
+        <!-- 1. VAS Pain Scale Slider (0-10) -->
+        <div class="bg-brand-cream/60 p-4 rounded-2xl border border-brand-creamDark space-y-2">
+          <div class="flex items-center justify-between">
+            <label class="text-xs font-bold text-gray-800 flex items-center gap-1.5">
+              <i class="fa-solid fa-heart-pulse text-rose-600"></i>
+              <span data-i18n="q1_title">1. ระดับความเจ็บปวดในช่องปาก (VAS Pain Score 0 - 10)</span>
+            </label>
+            <span class="text-xs font-bold px-2 py-0.5 rounded-full bg-white border border-gray-200 text-brand-burgundy">
+              <span id="pain-emoji">😐</span> <span id="pain-num-display" class="font-extrabold text-sm ml-1">4</span> / 10
+            </span>
+          </div>
+          <input type="range" id="pain-slider" min="0" max="10" value="4" oninput="handlePainSlider(this.value)" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-brand-burgundy">
+          <div class="flex justify-between text-[10px] text-gray-500 font-medium">
+            <span data-i18n="vas_0">0 (ไม่ปวด)</span>
+            <span data-i18n="vas_3">3 (ปวดเล็กน้อย)</span>
+            <span data-i18n="vas_6">6 (ปวดปานกลาง)</span>
+            <span data-i18n="vas_8">8 (ปวดมาก)</span>
+            <span data-i18n="vas_10">10 (ปวดที่สุด)</span>
+          </div>
+          <p id="pain-text-display" class="text-xs font-semibold text-brand-burgundy mt-1">ปวดปานกลาง แสบร้อนเวลาเคี้ยวกลืน</p>
+        </div>
+
+        <!-- 2. Functional Swallowing Capability (WHO Criteria) -->
+        <div class="space-y-2">
+          <label class="text-xs font-bold text-gray-800 block" data-i18n="q2_title">2. ความสามารถในการรับประทานอาหารและกลืน (WHO Criterion)</label>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5 text-xs">
+            <label class="flex items-start gap-2.5 p-3 rounded-2xl border border-stone-200 hover:border-brand-gold cursor-pointer has-[:checked]:border-brand-burgundy has-[:checked]:bg-brand-burgundy/5 transition">
+              <input type="radio" name="swallow_ability" value="normal" checked class="mt-0.5 accent-brand-burgundy">
+              <div>
+                <strong class="text-gray-900 block" data-i18n="q2_opt1_title">กลืนอาหารแข็งได้ปกติ</strong>
+                <p class="text-[11px] text-gray-500" data-i18n="q2_opt1_desc">มีอาการเจ็บหรือแสบเล็กน้อย แต่ยังทานข้าวได้</p>
+              </div>
+            </label>
+
+            <label class="flex items-start gap-2.5 p-3 rounded-2xl border border-stone-200 hover:border-brand-gold cursor-pointer has-[:checked]:border-brand-burgundy has-[:checked]:bg-brand-burgundy/5 transition">
+              <input type="radio" name="swallow_ability" value="soft" class="mt-0.5 accent-brand-burgundy">
+              <div>
+                <strong class="text-gray-900 block" data-i18n="q2_opt2_title">ทานได้เฉพาะอาหารอ่อน / โจ๊ก</strong>
+                <p class="text-[11px] text-gray-500" data-i18n="q2_opt2_desc">เคี้ยวอาหารแข็งไม่ได้เนื่องจากแผลเสียดสี</p>
+              </div>
+            </label>
+
+            <label class="flex items-start gap-2.5 p-3 rounded-2xl border border-stone-200 hover:border-brand-gold cursor-pointer has-[:checked]:border-brand-burgundy has-[:checked]:bg-brand-burgundy/5 transition">
+              <input type="radio" name="swallow_ability" value="liquid" class="mt-0.5 accent-brand-burgundy">
+              <div>
+                <strong class="text-gray-900 block" data-i18n="q2_opt3_title">ทานได้แค่น้ำซุปหรือของเหลว</strong>
+                <p class="text-[11px] text-gray-500" data-i18n="q2_opt3_desc">ไม่สามารถทานอาหารอ่อนได้ ต้องใช้หลอดดูด</p>
+              </div>
+            </label>
+
+            <label class="flex items-start gap-2.5 p-3 rounded-2xl border border-stone-200 hover:border-brand-gold cursor-pointer has-[:checked]:border-brand-burgundy has-[:checked]:bg-brand-burgundy/5 transition">
+              <input type="radio" name="swallow_ability" value="none" class="mt-0.5 accent-brand-burgundy">
+              <div>
+                <strong class="text-gray-900 block" data-i18n="q2_opt4_title">กลืนไม่ได้เลย เจ็บมาก</strong>
+                <p class="text-[11px] text-gray-500" data-i18n="q2_opt4_desc">กลืนน้ำลายยังแสบ จำเป็นต้องได้รับสารอาหารทางสาย</p>
+              </div>
+            </label>
+          </div>
+        </div>
+
+        <!-- 3. Visual Morphology Guide Cards -->
+        <div class="space-y-2">
+          <label class="text-xs font-bold text-gray-800 block" data-i18n="q3_title">3. ลักษณะและจำนวนรอยแผลที่สังเกตได้ (เปรียบเทียบจากภาพประกอบ)</label>
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-2.5 text-xs">
+            
+            <!-- Card 1: Erythema (Grade 1) -->
+            <label class="relative flex flex-col p-3 rounded-2xl border-2 border-stone-200 hover:border-brand-gold cursor-pointer has-[:checked]:border-brand-burgundy has-[:checked]:bg-brand-burgundy/5 transition overflow-hidden">
+              <input type="radio" name="lesion_type" value="erythema" class="accent-brand-burgundy absolute top-3 right-3">
+              
+              <div class="w-full h-24 rounded-xl bg-gradient-to-br from-rose-100 to-rose-200 flex items-center justify-center relative overflow-hidden mb-2 border border-rose-200">
+                <svg viewBox="0 0 160 100" class="w-full h-full">
+                  <rect width="160" height="100" fill="#f87171" opacity="0.3"/>
+                  <circle cx="80" cy="50" r="32" fill="#ef4444" opacity="0.4" filter="blur(6px)"/>
+                  <circle cx="80" cy="50" r="20" fill="#dc2626" opacity="0.55" filter="blur(3px)"/>
+                  <circle cx="75" cy="46" r="3" fill="#991b1b"/>
+                  <circle cx="86" cy="53" r="2.5" fill="#991b1b"/>
+                  <text x="80" y="88" text-anchor="middle" font-size="10" font-weight="bold" fill="#7f1d1d">Mild Erythema / รอยแดง</text>
+                </svg>
+                <span class="absolute top-1.5 left-2 text-[9px] font-bold bg-white/90 px-1.5 py-0.5 rounded text-rose-800">Grade 1</span>
+              </div>
+
+              <div>
+                <strong class="text-gray-900 block" data-i18n="q3_opt1_title">เยื่อบุแดงแสบ / จุดแดง (Erythema)</strong>
+                <p class="text-[11px] text-gray-500 mt-0.5" data-i18n="q3_opt1_desc">ยังไม่มีหลุมขาวลึก รู้สึกแสบเวลาทานอาหารรสจัดหรือน้ำร้อน</p>
+              </div>
+            </label>
+
+            <!-- Card 2: Single Ulcer (Grade 2) -->
+            <label class="relative flex flex-col p-3 rounded-2xl border-2 border-stone-200 hover:border-brand-gold cursor-pointer has-[:checked]:border-brand-burgundy has-[:checked]:bg-brand-burgundy/5 transition overflow-hidden">
+              <input type="radio" name="lesion_type" value="single_small" checked class="accent-brand-burgundy absolute top-3 right-3">
+              
+              <div class="w-full h-24 rounded-xl bg-gradient-to-br from-amber-50 to-rose-100 flex items-center justify-center relative overflow-hidden mb-2 border border-stone-200">
+                <svg viewBox="0 0 160 100" class="w-full h-full">
+                  <rect width="160" height="100" fill="#fca5a5" opacity="0.3"/>
+                  <ellipse cx="80" cy="50" rx="36" ry="26" fill="#e11d48" opacity="0.45" filter="blur(4px)"/>
+                  <ellipse cx="80" cy="50" rx="22" ry="16" fill="#fef08a" stroke="#b91c1c" stroke-width="2"/>
+                  <ellipse cx="80" cy="50" rx="14" ry="10" fill="#fef9c3"/>
+                  <text x="80" y="88" text-anchor="middle" font-size="10" font-weight="bold" fill="#881337">Discrete Ulcer / แผลหลุมเดี่ยว</text>
+                </svg>
+                <span class="absolute top-1.5 left-2 text-[9px] font-bold bg-white/90 px-1.5 py-0.5 rounded text-amber-800">Grade 2</span>
+              </div>
+
+              <div>
+                <strong class="text-gray-900 block" data-i18n="q3_opt2_title">แผลหลุมเดี่ยวฝ้าขาว (&lt;10 mm)</strong>
+                <p class="text-[11px] text-gray-500 mt-0.5" data-i18n="q3_opt2_desc">มีจุดขาวเหลือง 1-2 จุด ขอบแดงชัดเจน เจ็บเวลาเคี้ยวและกลืน</p>
+              </div>
+            </label>
+
+            <!-- Card 3: Confluent Ulcers (Grade 3) -->
+            <label class="relative flex flex-col p-3 rounded-2xl border-2 border-stone-200 hover:border-brand-gold cursor-pointer has-[:checked]:border-brand-burgundy has-[:checked]:bg-brand-burgundy/5 transition overflow-hidden">
+              <input type="radio" name="lesion_type" value="multiple" class="accent-brand-burgundy absolute top-3 right-3">
+              
+              <div class="w-full h-24 rounded-xl bg-gradient-to-br from-rose-200 to-rose-300 flex items-center justify-center relative overflow-hidden mb-2 border border-rose-300">
+                <svg viewBox="0 0 160 100" class="w-full h-full">
+                  <rect width="160" height="100" fill="#be123c" opacity="0.4"/>
+                  <path d="M 40,48 Q 60,30 90,38 Q 120,32 130,55 Q 115,75 80,72 Q 45,78 40,48 Z" fill="#b91c1c" opacity="0.7" filter="blur(3px)"/>
+                  <path d="M 48,50 Q 65,36 92,42 Q 115,38 122,54 Q 108,68 78,65 Q 52,70 48,50 Z" fill="#fef08a" stroke="#881337" stroke-width="2.5"/>
+                  <circle cx="68" cy="52" r="9" fill="#fffbeb"/>
+                  <circle cx="102" cy="50" r="11" fill="#fffbeb"/>
+                  <text x="80" y="88" text-anchor="middle" font-size="10" font-weight="bold" fill="#4c0519">Confluent / แผลปื้นใหญ่ลึก</text>
+                </svg>
+                <span class="absolute top-1.5 left-2 text-[9px] font-bold bg-white/90 px-1.5 py-0.5 rounded text-rose-900">Grade 3+</span>
+              </div>
+
+              <div>
+                <strong class="text-gray-900 block" data-i18n="q3_opt3_title">แผลหลายจุดรวมเป็นปื้น (&gt;10 mm)</strong>
+                <p class="text-[11px] text-gray-500 mt-0.5" data-i18n="q3_opt3_desc">แผลหลุมลึกกว้างเชื่อมต่อกัน ฝ้าขาวหนา เจ็บรุนแรง กลืนลำบาก</p>
+              </div>
+            </label>
+
+          </div>
+        </div>
+
+        <!-- 4. Xerostomia (Dry Mouth) -->
+        <div class="space-y-2">
+          <label class="text-xs font-bold text-gray-800 block" data-i18n="q4_title">4. ภาวะปากแห้งและน้ำลายเหนียว (Chemotherapy Xerostomia)</label>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+            <label class="flex items-center gap-2 p-3 rounded-xl border border-stone-200 hover:border-brand-gold cursor-pointer has-[:checked]:border-brand-burgundy has-[:checked]:bg-brand-burgundy/5">
+              <input type="radio" name="xerostomia" value="normal" checked class="accent-brand-burgundy">
+              <span data-i18n="q4_opt1">น้ำลายปกติ ไม่รู้สึกปากแห้งผิดปกติ</span>
+            </label>
+            <label class="flex items-center gap-2 p-3 rounded-xl border border-stone-200 hover:border-brand-gold cursor-pointer has-[:checked]:border-brand-burgundy has-[:checked]:bg-brand-burgundy/5">
+              <input type="radio" name="xerostomia" value="severe" class="accent-brand-burgundy">
+              <span data-i18n="q4_opt2">ปากแห้งมาก น้ำลายเหนียวข้น กลืนยาก</span>
+            </label>
+          </div>
+        </div>
+
+        <!-- Submit Evaluation -->
+        <button onclick="evaluateQuiz()" class="w-full bg-brand-burgundy hover:bg-brand-burgundyDark text-white py-3.5 px-4 rounded-xl text-xs sm:text-sm font-bold shadow-md hover:shadow-lg transition flex items-center justify-center gap-2">
+          <i class="fa-solid fa-calculator text-brand-gold"></i>
+          <span data-i18n="btn_evaluate_quiz">ประมวลผลการประเมิน & แนะนำขนาดฟิล์ม ORA-SOOTHE</span>
+        </button>
+      </div>
+    </section>
+
+    <!-- ============================================== -->
+    <!-- PATHWAY 2: SMART REFERENCE-CALIBRATED PHOTO    -->
+    <!-- ============================================== -->
+    <section id="tab-view-photo" class="hidden space-y-4">
+      
+      <!-- Calibration Reference Selector -->
+      <div class="bg-white rounded-2xl p-4 border border-stone-200 shadow-sm space-y-2.5">
+        <label class="text-xs font-bold text-stone-800 block" data-i18n="step1_ref_title">1. เลือกวัตถุอ้างอิงเทียบขนาด (แก้ปัญหาระยะซูมกล้องแต่ละเครื่องไม่เท่ากัน)</label>
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
+          
+          <!-- 1 Baht Coin -->
+          <button type="button" onclick="selectCalibrationReference('coin')" id="ref-card-coin" class="ref-card p-3 rounded-xl border-2 border-brand-burgundy bg-brand-burgundy/5 text-center transition">
+            <span class="text-2xl block">🪙</span>
+            <div class="text-xs font-bold text-stone-900 mt-1" data-i18n="ref_coin_name">เหรียญ 1 บาท</div>
+            <div class="text-[10px] text-brand-burgundy font-extrabold">20.0 mm</div>
+          </button>
+
+          <!-- US Quarter Coin -->
+          <button type="button" onclick="selectCalibrationReference('uscoin')" id="ref-card-uscoin" class="ref-card p-3 rounded-xl border-2 border-stone-200 text-center transition">
+            <span class="text-2xl block">💵</span>
+            <div class="text-xs font-bold text-stone-900 mt-1" data-i18n="ref_uscoin_name">US Quarter 25¢</div>
+            <div class="text-[10px] text-stone-500 font-bold">24.26 mm</div>
+          </button>
+
+          <!-- ORA-SOOTHE Patch -->
+          <button type="button" onclick="selectCalibrationReference('patch')" id="ref-card-patch" class="ref-card p-3 rounded-xl border-2 border-stone-200 text-center transition">
+            <span class="text-2xl block">🩹</span>
+            <div class="text-xs font-bold text-stone-900 mt-1" data-i18n="ref_patch_name">แผ่น ORA-SOOTHE</div>
+            <div class="text-[10px] text-stone-500 font-bold">12.0 mm</div>
+          </button>
+
+          <!-- Cotton Swab -->
+          <button type="button" onclick="selectCalibrationReference('swab')" id="ref-card-swab" class="ref-card p-3 rounded-xl border-2 border-stone-200 text-center transition">
+            <span class="text-2xl block">🥢</span>
+            <div class="text-xs font-bold text-stone-900 mt-1" data-i18n="ref_swab_name">หัวก้านสำลี</div>
+            <div class="text-[10px] text-stone-500 font-bold">5.0 mm</div>
+          </button>
+
+        </div>
+      </div>
+
+      <!-- Photo Upload & Clinical Case Presets -->
+      <div class="bg-white rounded-2xl p-4 border border-stone-200 shadow-sm flex flex-wrap items-center justify-between gap-3">
+        <div class="flex items-center gap-2">
+          <label for="photo-file-input" class="cursor-pointer bg-brand-burgundy hover:bg-brand-burgundyDark text-white px-3.5 py-2 rounded-xl text-xs font-bold shadow-xs flex items-center gap-2 transition">
+            <i class="fa-solid fa-cloud-arrow-up text-brand-gold"></i>
+            <span data-i18n="btn_upload_photo">ถ่ายภาพ / อัปโหลดรูปแผล</span>
+          </label>
+          <input type="file" id="photo-file-input" accept="image/*" class="hidden" onchange="loadUserPhoto(event)">
+        </div>
+
+        <!-- Presets -->
+        <div class="flex items-center gap-1.5 text-xs">
+          <span class="text-[11px] text-gray-500 font-semibold" data-i18n="demo_cases_label">เคสจำลอง:</span>
+          <button onclick="loadClinicalDemo('mild')" class="px-2.5 py-1 rounded-lg border border-gray-200 bg-gray-50 hover:bg-gray-100 text-gray-700 text-[11px] font-semibold" data-i18n="case_mild">Case 1 (~5mm)</button>
+          <button onclick="loadClinicalDemo('moderate')" class="px-2.5 py-1 rounded-lg border border-gray-200 bg-gray-50 hover:bg-gray-100 text-gray-700 text-[11px] font-semibold" data-i18n="case_moderate">Case 2 (~10mm)</button>
+          <button onclick="loadClinicalDemo('severe')" class="px-2.5 py-1 rounded-lg border border-gray-200 bg-gray-50 hover:bg-gray-100 text-gray-700 text-[11px] font-semibold" data-i18n="case_severe">Case 3 (>15mm)</button>
+        </div>
+      </div>
+
+      <!-- Dual Reticle Canvas Measurement -->
+      <div class="bg-white rounded-3xl p-5 border border-stone-200 shadow-sm space-y-3">
+        <div class="flex items-center justify-between">
+          <h3 class="text-xs sm:text-sm font-bold text-gray-800 flex items-center gap-2">
+            <i class="fa-solid fa-arrows-to-dot text-brand-gold"></i>
+            <span data-i18n="step3_canvas_title">ลากปรับวงแหวนวัดขนาดแผลเทียบวัตถุอ้างอิง</span>
+          </h3>
+          <button onclick="resetCanvasRings()" class="text-xs text-brand-burgundy font-semibold hover:underline" data-i18n="btn_reset_rings">รีเซ็ตตำแหน่งวงกลม</button>
+        </div>
+
+        <div class="relative w-full aspect-[4/3] bg-neutral-900 rounded-2xl overflow-hidden border border-gray-300">
+          <canvas id="calibrationCanvas" class="w-full h-full object-cover touch-none cursor-crosshair"></canvas>
+          <div class="absolute bottom-2 left-2 right-2 bg-black/65 backdrop-blur-sm text-white px-3 py-1.5 rounded-xl text-[10px] sm:text-[11px] flex items-center justify-between">
+            <span data-i18n="canvas_instructions">• ลาก วงแหวนสีทอง ไปทาบวัตถุอ้างอิง | ลาก วงแหวนสีแดง ไปทาบขอบแผล</span>
+            <span class="text-brand-gold font-bold"><i class="fa-solid fa-arrows-up-down-left-right mr-1"></i> Drag to move</span>
+          </div>
+        </div>
+
+        <!-- Sliders for Fine Ring Tuning -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+          <div class="p-3 bg-amber-50/60 rounded-xl border border-amber-200/60 text-xs">
+            <div class="flex justify-between font-bold text-amber-900 mb-1">
+              <span data-i18n="slider_ref_label">ขนาดวงเทียบ (สีทอง)</span>
+              <span id="label-ref-ring-px">130 px</span>
+            </div>
+            <input type="range" id="slider-ref-radius" min="20" max="300" value="130" oninput="changeRefRingRadius(this.value)" class="w-full h-2 bg-amber-200 rounded-lg appearance-none cursor-pointer accent-brand-gold">
+          </div>
+
+          <div class="p-3 bg-rose-50/60 rounded-xl border border-rose-200/60 text-xs">
+            <div class="flex justify-between font-bold text-rose-900 mb-1">
+              <span data-i18n="slider_ulcer_label">ขนาดวงแผล (สีแดง)</span>
+              <span id="label-ulcer-ring-px">70 px</span>
+            </div>
+            <input type="range" id="slider-ulcer-radius" min="10" max="250" value="70" oninput="changeUlcerRingRadius(this.value)" class="w-full h-2 bg-rose-200 rounded-lg appearance-none cursor-pointer accent-rose-600">
+          </div>
+        </div>
+
+        <!-- Calculation Result Bar -->
+        <div class="p-4 bg-brand-cream rounded-2xl border border-brand-creamDark flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <span class="text-[10px] text-gray-500 font-bold uppercase tracking-wider block" data-i18n="measured_size_label">ขนาดแผลที่วัดได้ (Calibrated Diameter)</span>
+            <div class="flex items-baseline gap-2">
+              <span id="display-ulcer-diameter" class="text-2xl sm:text-3xl font-black text-brand-burgundy font-mono">10.8</span>
+              <span class="text-sm font-bold text-gray-700">มม. (mm)</span>
+            </div>
+            <p id="display-ulcer-area" class="text-[11px] text-stone-500">พื้นที่ประมาณ: 91.6 mm²</p>
+          </div>
+
+          <button onclick="evaluatePhotoSizing()" class="bg-brand-burgundy hover:bg-brand-burgundyDark text-white px-5 py-3 rounded-xl text-xs sm:text-sm font-bold shadow-md hover:shadow-lg transition flex items-center gap-2">
+            <i class="fa-solid fa-brain text-brand-gold"></i>
+            <span data-i18n="btn_calc_photo_dose">คำนวณโดสยา ORA-SOOTHE →</span>
+          </button>
+        </div>
+
+      </div>
+
+    </section>
+
+    <!-- ============================================== -->
+    <!-- RESULT SECTION: DOSAGE & APPLICATION PROTOCOL  -->
+    <!-- ============================================== -->
+    <section id="section-result" class="hidden space-y-5 pt-2">
+      
+      <!-- Clinical Classification Card -->
+      <div class="bg-white rounded-3xl p-5 sm:p-6 border border-stone-200 shadow-sm space-y-4">
+        
+        <div class="flex flex-wrap items-center justify-between gap-2 border-b border-gray-100 pb-3">
+          <div class="flex items-center gap-2">
+            <span class="w-3 h-3 rounded-full bg-emerald-500"></span>
+            <h3 class="font-bold text-gray-900 text-sm" data-i18n="result_badge">ผลการประเมินทางคลินิก (WHO Grading)</h3>
+          </div>
+          <span id="result-mode-tag" class="text-[11px] font-mono font-semibold bg-gray-100 text-gray-600 px-2.5 py-0.5 rounded-full">Option 1</span>
+        </div>
+
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div>
+            <h4 id="res-grade-title" class="text-xl sm:text-2xl font-black text-brand-burgundy">WHO Grade 2: Moderate Mucositis</h4>
+            <p id="res-grade-desc" class="text-xs text-gray-600 mt-1 max-w-xl">พบแผลหลุมชัดเจน ต้องรับประทานอาหารอ่อน เช่น ข้าวต้ม เพื่อเลี่ยงการเสียดสี</p>
+          </div>
+          <div id="res-grade-pill" class="px-3.5 py-2 rounded-2xl font-black text-sm bg-amber-100 text-amber-800 border border-amber-200 shrink-0 self-start sm:self-auto">
+            WHO Grade 2
+          </div>
+        </div>
+
+        <!-- 3 Stat Metrics -->
+        <div class="grid grid-cols-3 gap-2 pt-1 text-center">
+          <div class="p-2.5 rounded-xl bg-gray-50 border border-gray-100">
+            <span class="text-[10px] text-gray-400 font-bold uppercase" data-i18n="stat_pain">ระดับความปวด</span>
+            <p id="res-stat-pain" class="text-sm sm:text-base font-extrabold text-brand-burgundy mt-0.5">4 / 10</p>
+          </div>
+          <div class="p-2.5 rounded-xl bg-gray-50 border border-gray-100">
+            <span class="text-[10px] text-gray-400 font-bold uppercase" data-i18n="stat_size">ขนาดแผล</span>
+            <p id="res-stat-size" class="text-sm sm:text-base font-extrabold text-brand-green mt-0.5">&lt;10 mm</p>
+          </div>
+          <div class="p-2.5 rounded-xl bg-gray-50 border border-gray-100">
+            <span class="text-[10px] text-gray-400 font-bold uppercase" data-i18n="stat_time">เวลาประเมิน</span>
+            <p id="res-stat-time" class="text-sm sm:text-base font-extrabold text-gray-800 mt-0.5">10:45</p>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Prescribed ORA-SOOTHE Dosage Card -->
+      <div class="bg-gradient-to-br from-brand-burgundy to-brand-burgundyDark text-white rounded-3xl p-6 shadow-md relative overflow-hidden">
+        <i class="fa-solid fa-leaf absolute -right-6 -bottom-6 text-white/10 text-9xl pointer-events-none"></i>
+        
+        <span class="bg-brand-gold text-brand-burgundy font-extrabold text-[10px] uppercase px-2.5 py-1 rounded-full tracking-wider" data-i18n="rx_card_title">
+          ปริมาณการใช้แผ่นฟิล์ม ORA-SOOTHE ที่แนะนำ
+        </span>
+
+        <h3 id="res-rx-patch-qty" class="text-xl sm:text-2xl font-black mt-3">1 แผ่นมาตรฐาน (Standard 12 mm ครอบคลุมแผลมิดชิด)</h3>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-4 pt-3 border-t border-white/20 text-xs">
+          <div>
+            <span class="text-brand-gold text-[10px] uppercase font-bold" data-i18n="rx_freq_label">ความถี่ในการแปะ:</span>
+            <p id="res-rx-freq" class="font-bold text-sm mt-0.5">ทุก 4 - 6 ชั่วโมง (แปะก่อนมื้ออาหาร 15 นาที)</p>
+          </div>
+          <div>
+            <span class="text-brand-gold text-[10px] uppercase font-bold" data-i18n="rx_timing_label">ช่วงเวลาที่เหมาะสม:</span>
+            <p class="font-bold text-sm mt-0.5" data-i18n="rx_timing_val">ก่อนมื้ออาหาร 15 นาที เพื่อให้เมือกกระเจี๊ยบไฮเดรตเคลือบคลุมเต็มที่</p>
+          </div>
+        </div>
+
+        <!-- 3-Step Bio-Film Application Protocol -->
+        <div class="mt-5 p-3.5 bg-black/20 rounded-2xl border border-white/15 space-y-2 text-xs">
+          <strong class="text-brand-gold flex items-center gap-1.5" data-i18n="protocol_title">
+            <i class="fa-solid fa-shield-halved"></i> วิธีใช้ฟิล์มชีวภาพ 3 ขั้นตอน (3-Step Bio-Film Protocol):
+          </strong>
+          <ul class="space-y-1.5 text-brand-cream/90 text-[11px] leading-relaxed">
+            <li data-i18n="protocol_step1">• <strong>1. TARGET:</strong> เช็ดมือให้แห้ง วางแผ่นฟิล์มลงบนแผลโดยตรง เมือกกระเจี๊ยบจะสร้างพันธะไฮโดรเจนยึดเกาะเยื่อบุแน่น (Mucoadhesion) ภายในไม่กี่วินาที</li>
+            <li data-i18n="protocol_step2">• <strong>2. RELIEVE:</strong> สารสกัดคราดหัวแหวน (Spilanthol) สกัดกั้น Sodium Channel ออกฤทธิ์ชาเฉพาะที่ บรรเทาความเจ็บปวดภายใน 5 นาที</li>
+            <li data-i18n="protocol_step3">• <strong>3. SOOTHE & SWALLOW:</strong> ไม่ต้องลอกออก แผ่นฟิล์มจะค่อยๆ สลายและกลืนลงคอได้อย่างปลอดภัย 100% เพื่อเคลือบทางเดินอาหารและหลอดอาหาร</li>
+          </ul>
+        </div>
+      </div>
+
+      <!-- Live 4-Hour Countdown Reapplication Timer -->
+      <div class="bg-white rounded-3xl p-5 border border-stone-200 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-4">
+        <div>
+          <h4 class="font-bold text-gray-900 text-sm flex items-center gap-2">
+            <i class="fa-regular fa-clock text-brand-burgundy"></i>
+            <span data-i18n="timer_heading">ตัวนับเวลาแปะแผ่นถัดไป (Next Dose Timer)</span>
+          </h4>
+          <p class="text-xs text-gray-500 mt-0.5" data-i18n="timer_desc">นับถอยหลังระยะเวลาการปกป้องของเมือกกระเจี๊ยบ (4-6 ชม.)</p>
+        </div>
+
+        <div class="flex items-center gap-3">
+          <div id="countdown-clock" class="text-2xl sm:text-3xl font-black font-mono text-brand-burgundy bg-brand-cream px-4 py-2 rounded-2xl border border-brand-creamDark">
+            04:00:00
+          </div>
+          <button onclick="toggleBioTimer()" id="timer-toggle-btn" class="bg-gray-100 hover:bg-gray-200 text-gray-800 font-bold px-4 py-2.5 rounded-xl text-xs transition border border-gray-300">
+            <span data-i18n="btn_start_timer">เริ่มนับเวลา</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- 7-Day Healing Trajectory Chart -->
+      <div class="bg-white rounded-3xl p-5 sm:p-6 border border-stone-200 shadow-sm space-y-3">
+        <div class="flex items-center justify-between">
+          <div>
+            <h4 class="font-bold text-gray-900 text-sm flex items-center gap-2">
+              <i class="fa-solid fa-chart-line text-brand-green"></i>
+              <span data-i18n="healingForecastTitle">กราฟจำลองการสมานแผลใน 7 วัน (7-Day Healing Trajectory)</span>
+            </h4>
+            <p class="text-xs text-gray-500 mt-0.5" data-i18n="healingForecastSubtitle">เปรียบเทียบอัตราการลดลงของขนาดแผล: ORA-SOOTHE vs แผลที่ไม่ได้รับการดูแล</p>
+          </div>
+          <span class="text-xs bg-emerald-50 text-emerald-800 border border-emerald-200 px-2.5 py-1 rounded-full font-bold">
+            -60% Recovery Time
+          </span>
+        </div>
+        
+        <div class="w-full h-64">
+          <canvas id="healingChartCanvas"></canvas>
+        </div>
+      </div>
+
+      <!-- Action Buttons: Save & Doctor Sharing -->
+      <div class="flex flex-wrap items-center gap-3">
+        <button onclick="saveRecordToLocal()" class="flex-1 bg-brand-green hover:bg-brand-greenLight text-white py-3 px-4 rounded-xl text-xs sm:text-sm font-bold shadow transition flex items-center justify-center gap-2">
+          <i class="fa-solid fa-bookmark text-brand-gold"></i>
+          <span data-i18n="btn_save_record">บันทึกประวัติการประเมิน</span>
+        </button>
+
+        <button onclick="openFullReportModal()" class="flex-1 bg-brand-burgundy hover:bg-brand-burgundyDark text-white py-3 px-4 rounded-xl text-xs sm:text-sm font-bold shadow transition flex items-center justify-center gap-2">
+          <i class="fa-solid fa-file-medical text-brand-gold"></i>
+          <span data-i18n="previewPrintReport">ดูเอกสารรายงานแพทย์ (Dossier)</span>
+        </button>
+
+        <button onclick="copyDoctorReport()" class="w-full sm:w-auto bg-white hover:bg-gray-50 text-gray-700 py-3 px-5 rounded-xl text-xs sm:text-sm font-semibold border border-gray-300 transition flex items-center justify-center gap-2">
+          <i class="fa-solid fa-share-nodes text-brand-burgundy"></i>
+          <span data-i18n="btn_copy_doctor">คัดลอกรายงานส่งแพทย์ทาง LINE</span>
+        </button>
+      </div>
+
+    </section>
+
+    <!-- Notification Toast -->
+    <div id="copy-toast" class="hidden fixed bottom-6 left-1/2 -translate-x-1/2 bg-neutral-900/90 text-white text-xs px-4 py-2.5 rounded-2xl shadow-xl backdrop-blur-sm z-50 animate-bounce flex items-center gap-2 border border-brand-gold/40">
+      <i class="fa-solid fa-circle-check text-brand-gold"></i>
+      <span id="toast-message">✓ คัดลอกรายงานส่งแพทย์เรียบร้อยแล้ว</span>
+    </div>
+
+  </main>
+
+  <!-- ============================================== -->
+  <!-- MODAL 1: FULL CLINICAL DOSSIER (PRINT / PDF)   -->
+  <!-- ============================================== -->
+  <div id="reportModal" class="hidden fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="bg-white rounded-3xl max-w-2xl w-full max-h-[90vh] overflow-y-auto p-6 sm:p-8 shadow-2xl border border-gray-200 relative" id="reportModalCard">
+      
+      <button onclick="closeReportModal()" class="absolute top-4 right-4 text-gray-400 hover:text-gray-700 text-lg w-8 h-8 rounded-full hover:bg-gray-100 flex items-center justify-center">
+        <i class="fa-solid fa-xmark"></i>
+      </button>
+
+      <!-- Document Header -->
+      <div class="flex items-start justify-between border-b-2 border-brand-burgundy pb-4">
+        <div>
+          <div class="flex items-center gap-2">
+            <h2 class="text-xl font-black text-brand-burgundy">ORA-CARE</h2>
+            <span class="text-xs bg-brand-gold/20 text-brand-burgundy font-bold px-2 py-0.5 rounded border border-brand-gold/40">CLINICAL DOSSIER</span>
+          </div>
+          <p class="text-xs text-gray-600 mt-1">Oral Mucositis Evaluation & ORA-SOOTHE Bio-Film Regimen</p>
+          <p class="text-[11px] text-gray-400">Collaboration: Montfort College, Chiang Mai & Bio-Medical Research</p>
+        </div>
+        <div class="text-right text-xs">
+          <span class="font-bold text-gray-800">CONFIDENTIAL</span>
+          <div class="text-gray-500 text-[10px] mt-0.5">ID: <span class="font-mono">#ORA-2026-MC</span></div>
+          <div class="text-gray-500 text-[10px]">Date: <span id="modalDateStamp" class="font-semibold text-gray-700">Nov 16, 2026</span></div>
+        </div>
+      </div>
+
+      <!-- Patient & Lesion Specs Grid -->
+      <div class="my-5 grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs bg-brand-cream/70 p-3.5 rounded-2xl border border-brand-creamDark">
+        <div>
+          <span class="text-gray-400 text-[10px] uppercase font-bold">Severity Stage</span>
+          <div id="modalWhoGrade" class="font-bold text-brand-burgundy text-sm mt-0.5">WHO Grade 2</div>
+        </div>
+        <div>
+          <span class="text-gray-400 text-[10px] uppercase font-bold">Max Dimension</span>
+          <div id="modalDiameter" class="font-bold text-gray-800 text-sm mt-0.5">10.8 mm</div>
+        </div>
+        <div>
+          <span class="text-gray-400 text-[10px] uppercase font-bold">Pain Index (VAS)</span>
+          <div id="modalPain" class="font-bold text-rose-600 text-sm mt-0.5">4 / 10</div>
+        </div>
+        <div>
+          <span class="text-gray-400 text-[10px] uppercase font-bold">Prescription</span>
+          <div id="modalPatchType" class="font-bold text-brand-green text-sm mt-0.5">1 Standard</div>
+        </div>
+      </div>
+
+      <!-- Prescribed Formulation Details -->
+      <div class="space-y-3 text-xs">
+        <h4 class="font-bold text-gray-900 text-sm border-b pb-1 text-brand-green flex items-center gap-2">
+          <i class="fa-solid fa-leaf"></i> Active Phytochemical Bio-Scaffold (ORA-SOOTHE 2-in-1 Patch)
+        </h4>
+
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-2 text-[11px]">
+          <div class="p-2.5 rounded-xl border border-gray-200 bg-white">
+            <strong class="text-brand-green">75% Okra Mucilage Bio-Scaffold</strong>
+            <p class="text-gray-500 mt-1">High-molecular weight polysaccharide hydrogel providing 4–6 hrs sustained mucoadhesion over lesion.</p>
+          </div>
+          <div class="p-2.5 rounded-xl border border-gray-200 bg-white">
+            <strong class="text-brand-burgundy">8% Spilanthol Extract</strong>
+            <p class="text-gray-500 mt-1">Spilanthes acmella alkylamides blocking mucosal Na+ channels for rapid &lt;5 min local numbing and xerostomia stimulation.</p>
+          </div>
+          <div class="p-2.5 rounded-xl border border-gray-200 bg-white">
+            <strong class="text-purple-900">15% Riceberry Anthocyanins</strong>
+            <p class="text-gray-500 mt-1">Cyanidin-3-Glucoside ROS scavenging fraction to stimulate oral fibroblast migration and tissue regeneration.</p>
+          </div>
+        </div>
+
+        <div class="p-3.5 rounded-xl bg-gray-50 border border-gray-200">
+          <strong class="text-gray-800">Physician Administration Instructions:</strong>
+          <p id="modalInstructions" class="text-gray-600 mt-1 leading-relaxed">
+            Apply 1 Standard Patch (12 mm) directly over the dried lesion 15 minutes before meals. The bio-adhesive gel will self-hydrate and protect during mastication. 100% edible and safe to swallow.
+          </p>
+        </div>
+      </div>
+
+      <!-- Bottom Signature & Actions -->
+      <div class="mt-6 pt-4 border-t flex flex-wrap items-center justify-between gap-3 text-xs">
+        <div class="text-[11px] text-gray-400">
+          * Validated for international scientific and medical competition presentation.
+        </div>
+        <div class="flex items-center gap-2">
+          <button onclick="window.print()" class="bg-brand-burgundy hover:bg-brand-burgundyDark text-white px-4 py-2 rounded-xl font-bold flex items-center gap-2 shadow">
+            <i class="fa-solid fa-print"></i> Print Dossier
+          </button>
+          <button onclick="closeReportModal()" class="bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2 rounded-xl font-semibold border border-gray-300">
+            Close
+          </button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ============================================== -->
+  <!-- MODAL 2: HISTORY RECORDS                       -->
+  <!-- ============================================== -->
+  <div id="history-modal" class="hidden fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="bg-white rounded-3xl max-w-lg w-full max-h-[85vh] overflow-hidden p-6 shadow-2xl border border-gray-200 flex flex-col relative">
+      <button onclick="closeHistoryModal()" class="absolute top-4 right-4 text-gray-400 hover:text-gray-700 text-lg w-8 h-8 rounded-full hover:bg-gray-100 flex items-center justify-center">
+        <i class="fa-solid fa-xmark"></i>
+      </button>
+      <h3 class="text-base font-bold text-brand-burgundy flex items-center gap-2" data-i18n="history_modal_title">
+        <i class="fa-solid fa-clock-rotate-left"></i> ประวัติการบันทึกแผล ORA-CARE
+      </h3>
+      <div id="history-container" class="my-4 overflow-y-auto flex-1 space-y-2.5 pr-1 text-xs">
+        <!-- populated via js -->
+      </div>
+      <div class="pt-3 border-t flex items-center justify-between text-xs">
+        <button onclick="clearAllHistory()" class="text-rose-600 hover:underline" data-i18n="btn_clear_history">ล้างประวัติ</button>
+        <button onclick="closeHistoryModal()" class="bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-1.5 rounded-xl font-semibold" data-i18n="btn_close">ปิด</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================================== -->
+  <!-- MODAL 3: HOW IT WORKS GUIDE                    -->
+  <!-- ============================================== -->
+  <div id="howItWorksModal" class="hidden fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-gray-200 relative text-xs">
+      <button onclick="toggleHowItWorks(false)" class="absolute top-4 right-4 text-gray-400 hover:text-gray-700 text-lg w-8 h-8 rounded-full hover:bg-gray-100 flex items-center justify-center">
+        <i class="fa-solid fa-xmark"></i>
+      </button>
+      <h3 class="text-base font-bold text-brand-burgundy flex items-center gap-2">
+        <i class="fa-solid fa-circle-question"></i> How ORA-CARE Works
+      </h3>
+      <div class="mt-4 space-y-3">
+        <div class="p-3 bg-brand-cream rounded-2xl border border-brand-gold/30">
+          <strong class="text-gray-900 block text-xs">Option 1: Clinical Symptoms</strong>
+          <p class="text-gray-600 mt-0.5 text-[11px]">Best for patients who cannot photograph lesions. Uses WHO Oral Toxicity criteria (swallowing, pain, lesion morphology).</p>
+        </div>
+        <div class="p-3 bg-brand-cream rounded-2xl border border-brand-gold/30">
+          <strong class="text-gray-900 block text-xs">Option 2: Photo Scale Tool</strong>
+          <p class="text-gray-600 mt-0.5 text-[11px]">Solves mobile camera zoom differences by matching with a known standard (1 Baht, US Quarter, ORA-SOOTHE patch, or cotton swab).</p>
+        </div>
+      </div>
+      <button onclick="toggleHowItWorks(false)" class="mt-5 w-full bg-brand-burgundy text-white py-2.5 rounded-xl font-bold text-xs">
+        Got it! / เข้าใจแล้ว
+      </button>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <footer class="bg-white border-t border-gray-200 mt-10 py-5 text-center text-xs text-gray-500">
+    <div class="max-w-6xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-3">
+      <div class="flex items-center gap-2">
+        <span class="font-bold text-brand-burgundy">ORA-SOOTHE™ Bio-Innovation</span>
+        <span class="text-gray-300">|</span>
+        <span>Montfort College, Chiang Mai</span>
+      </div>
+      <div class="flex items-center gap-4 text-[11px] text-gray-400">
+        <span>100% Natural Vegan Formula</span>
+        <span>•</span>
+        <span>Safe if Swallowed</span>
+        <span>•</span>
+        <span>Biodegradable</span>
+      </div>
+    </div>
+  </footer>
+
+  <!-- Complete Application Logic -->
+  <script>
+    // Bilingual Lexicon Dictionary
+    const i18n = {
+      th: {
+        bannerTagline: "ประเมินขนาดแผลในช่องปาก & คำนวณปริมาณการแปะ ORA-SOOTHE อัตโนมัติ",
+        history_records: "ประวัติ",
+        tab_quiz_title: "ตัวเลือก 1: แบบประเมินอาการ (ไม่สะดวกถ่ายภาพ)",
+        tab_photo_title: "ตัวเลือก 2: ถ่ายภาพเทียบสเกล",
+        quiz_title: "แบบประเมินสำหรับผู้ป่วย (ไม่สะดวกถ่ายภาพ)",
+        quiz_subtitle: "ประเมินระดับความรุนแรงตามเกณฑ์มาตรฐานทางการแพทย์ WHO Oral Toxicity Scale",
+        q1_title: "1. ระดับความเจ็บปวดในช่องปาก (VAS Pain Score 0 - 10)",
+        vas_0: "0 (ไม่ปวด)",
+        vas_3: "3 (ปวดเล็กน้อย)",
+        vas_6: "6 (ปวดปานกลาง)",
+        vas_8: "8 (ปวดมาก)",
+        vas_10: "10 (ปวดที่สุด)",
+        q2_title: "2. ความสามารถในการรับประทานอาหารและกลืน (WHO Criterion)",
+        q2_opt1_title: "กลืนอาหารแข็งได้ปกติ",
+        q2_opt1_desc: "มีอาการเจ็บหรือแสบเล็กน้อย แต่ยังทานข้าวได้",
+        q2_opt2_title: "ทานได้เฉพาะอาหารอ่อน / โจ๊ก",
+        q2_opt2_desc: "เคี้ยวอาหารแข็งไม่ได้เนื่องจากแผลเสียดสี",
+        q2_opt3_title: "ทานได้แค่น้ำซุปหรือของเหลว",
+        q2_opt3_desc: "ไม่สามารถทานอาหารอ่อนได้ ต้องใช้หลอดดูด",
+        q2_opt4_title: "กลืนไม่ได้เลย เจ็บมาก",
+        q2_opt4_desc: "กลืนน้ำลายยังแสบ จำเป็นต้องได้รับสารอาหารทางสาย",
+        q3_title: "3. ลักษณะและจำนวนรอยแผลที่สังเกตได้ (เปรียบเทียบจากภาพประกอบ)",
+        q3_opt1_title: "เยื่อบุแดงแสบ / จุดแดง (Erythema)",
+        q3_opt1_desc: "ยังไม่มีหลุมขาวลึก รู้สึกแสบเวลาทานอาหารรสจัดหรือน้ำร้อน",
+        q3_opt2_title: "แผลหลุมเดี่ยวฝ้าขาว (<10 mm)",
+        q3_opt2_desc: "มีจุดขาวเหลือง 1-2 จุด ขอบแดงชัดเจน เจ็บเวลาเคี้ยวและกลืน",
+        q3_opt3_title: "แผลหลายจุดรวมเป็นปื้น (>10 mm)",
+        q3_opt3_desc: "แผลหลุมลึกกว้างเชื่อมต่อกัน ฝ้าขาวหนา เจ็บรุนแรง กลืนลำบาก",
+        q4_title: "4. ภาวะปากแห้งและน้ำลายเหนียว (Chemotherapy Xerostomia)",
+        q4_opt1: "น้ำลายปกติ ไม่รู้สึกปากแห้งผิดปกติ",
+        q4_opt2: "ปากแห้งมาก น้ำลายเหนียวข้น กลืนยาก",
+        btn_evaluate_quiz: "ประมวลผลการประเมิน & แนะนำขนาดฟิล์ม ORA-SOOTHE",
+        step1_ref_title: "1. เลือกวัตถุอ้างอิงเทียบขนาด (แก้ปัญหาระยะซูมกล้องแต่ละเครื่องไม่เท่ากัน)",
+        ref_coin_name: "เหรียญ 1 บาท",
+        ref_uscoin_name: "US Quarter 25¢",
+        ref_patch_name: "แผ่น ORA-SOOTHE",
+        ref_swab_name: "หัวก้านสำลี",
+        btn_upload_photo: "ถ่ายภาพ / อัปโหลดรูปแผล",
+        demo_cases_label: "เคสจำลอง:",
+        case_mild: "Case 1 (~5mm)",
+        case_moderate: "Case 2 (~10mm)",
+        case_severe: "Case 3 (>15mm)",
+        step3_canvas_title: "ลากปรับวงแหวนวัดขนาดแผลเทียบวัตถุอ้างอิง",
+        btn_reset_rings: "รีเซ็ตตำแหน่งวงกลม",
+        canvas_instructions: "• ลาก วงแหวนสีทอง ไปทาบวัตถุอ้างอิง | ลาก วงแหวนสีแดง ไปทาบขอบแผล",
+        slider_ref_label: "ขนาดวงเทียบ (สีทอง)",
+        slider_ulcer_label: "ขนาดวงแผล (สีแดง)",
+        measured_size_label: "ขนาดแผลที่วัดได้ (Calibrated Diameter)",
+        btn_calc_photo_dose: "คำนวณโดสยา ORA-SOOTHE →",
+        result_badge: "ผลการประเมินทางคลินิก (WHO Grading)",
+        stat_pain: "ระดับความปวด",
+        stat_size: "ขนาดแผล",
+        stat_time: "เวลาประเมิน",
+        rx_card_title: "ปริมาณการใช้แผ่นฟิล์ม ORA-SOOTHE ที่แนะนำ",
+        rx_freq_label: "ความถี่ในการแปะ:",
+        rx_timing_label: "ช่วงเวลาที่เหมาะสม:",
+        rx_timing_val: "ก่อนมื้ออาหาร 15 นาที เพื่อให้เมือกกระเจี๊ยบไฮเดรตเคลือบคลุมเต็มที่",
+        protocol_title: "วิธีใช้ฟิล์มชีวภาพ 3 ขั้นตอน (3-Step Bio-Film Protocol):",
+        protocol_step1: "• <strong>1. TARGET:</strong> เช็ดมือให้แห้ง วางแผ่นฟิล์มลงบนแผลโดยตรง เมือกกระเจี๊ยบจะสร้างพันธะไฮโดรเจนยึดเกาะเยื่อบุแน่น (Mucoadhesion) ภายในไม่กี่วินาที",
+        protocol_step2: "• <strong>2. RELIEVE:</strong> สารสกัดคราดหัวแหวน (Spilanthol) สกัดกั้น Sodium Channel ออกฤทธิ์ชาเฉพาะที่ บรรเทาความเจ็บปวดภายใน 5 นาที",
+        protocol_step3: "• <strong>3. SOOTHE & SWALLOW:</strong> ไม่ต้องลอกออก แผ่นฟิล์มจะค่อยๆ สลายและกลืนลงคอได้อย่างปลอดภัย 100% เพื่อเคลือบทางเดินอาหารและหลอดอาหาร",
+        timer_heading: "ตัวนับเวลาแปะแผ่นถัดไป (Next Dose Timer)",
+        timer_desc: "นับถอยหลังระยะเวลาการปกป้องของเมือกกระเจี๊ยบ (4-6 ชม.)",
+        btn_start_timer: "เริ่มนับเวลา",
+        healingForecastTitle: "กราฟจำลองการสมานแผลใน 7 วัน (7-Day Healing Trajectory)",
+        healingForecastSubtitle: "เปรียบเทียบอัตราการลดลงของขนาดแผล: ORA-SOOTHE vs แผลที่ไม่ได้รับการดูแล",
+        btn_save_record: "บันทึกประวัติการประเมิน",
+        previewPrintReport: "ดูเอกสารรายงานแพทย์ (Dossier)",
+        btn_copy_doctor: "คัดลอกรายงานส่งแพทย์ทาง LINE",
+        history_modal_title: "ประวัติการบันทึกแผล ORA-CARE",
+        btn_clear_history: "ล้างประวัติ",
+        btn_close: "ปิด"
+      },
+      en: {
+        bannerTagline: "Precision Ulcer Sizing & Automated ORA-SOOTHE Dosage Calculation",
+        history_records: "History",
+        tab_quiz_title: "Option 1: Clinical Symptoms (No Photo)",
+        tab_photo_title: "Option 2: Photo Scale Tool",
+        quiz_title: "Patient Self-Assessment (No Photo Required)",
+        quiz_subtitle: "Severity grading according to WHO Oral Toxicity Scale criteria",
+        q1_title: "1. Oral Pain Severity (VAS Pain Score 0 - 10)",
+        vas_0: "0 (No Pain)",
+        vas_3: "3 (Mild Soreness)",
+        vas_6: "6 (Moderate Pain)",
+        vas_8: "8 (Severe Pain)",
+        vas_10: "10 (Unbearable)",
+        q2_title: "2. Swallowing & Diet Function (WHO Criterion)",
+        q2_opt1_title: "Able to eat normal solid foods",
+        q2_opt1_desc: "Mild discomfort or stinging, but can eat regular diet",
+        q2_opt2_title: "Can swallow soft / moist foods only",
+        q2_opt2_desc: "Cannot tolerate solid foods due to mucosal ulcer friction",
+        q2_opt3_title: "Can swallow liquids only (broth, liquids)",
+        q2_opt3_desc: "Unable to swallow semi-solids; straw or sipping needed",
+        q2_opt4_title: "Cannot swallow at all, severe pain",
+        q2_opt4_desc: "Even swallowing saliva hurts; IV/enteral feeding required",
+        q3_title: "3. Observed Ulcer Lesions & Morphological Comparison",
+        q3_opt1_title: "Erythema / Red Stinging Surface (Grade 1)",
+        q3_opt1_desc: "No deep whitish crater; localized redness with stinging on contact",
+        q3_opt2_title: "Discrete Crater Ulcer (<10 mm, Grade 2)",
+        q3_opt2_desc: "1-2 yellow-white pseudomembrane spots with sharp red borders",
+        q3_opt3_title: "Multiple Confluent Ulcers (>10 mm, Grade 3)",
+        q3_opt3_desc: "Extensive fused deep ulcerations, heavy exudate, extreme eating pain",
+        q4_title: "4. Chemotherapy-Induced Xerostomia (Dry Mouth)",
+        q4_opt1: "Normal salivation, no severe dry sensation",
+        q4_opt2: "Severe dry mouth, thick viscous saliva, painful swallowing",
+        btn_evaluate_quiz: "Evaluate Mucositis Grade & Prescribe ORA-SOOTHE",
+        step1_ref_title: "1. Select Calibration Standard (Solves mobile zoom/distance variance)",
+        ref_coin_name: "1 Baht Coin (TH)",
+        ref_uscoin_name: "US Quarter 25¢",
+        ref_patch_name: "ORA-SOOTHE Patch",
+        ref_swab_name: "Cotton Swab Tip",
+        btn_upload_photo: "Snap / Upload Ulcer Photo",
+        demo_cases_label: "Clinical Presets:",
+        case_mild: "Case 1 (~5mm)",
+        case_moderate: "Case 2 (~10mm)",
+        case_severe: "Case 3 (>15mm)",
+        step3_canvas_title: "Drag Reticles to Calibrate Scale & Measure Ulcer",
+        btn_reset_rings: "Reset Reticle Positions",
+        canvas_instructions: "• Drag GOLD RING over calibration standard | Drag RED RING over ulcer",
+        slider_ref_label: "Ref Ring Radius (Gold)",
+        slider_ulcer_label: "Ulcer Ring Radius (Red)",
+        measured_size_label: "Calibrated Ulcer Diameter",
+        btn_calc_photo_dose: "Compute ORA-SOOTHE Dosage →",
+        result_badge: "Clinical WHO Classification Result",
+        stat_pain: "Pain Score",
+        stat_size: "Ulcer Size",
+        stat_time: "Time Recorded",
+        rx_card_title: "Prescribed ORA-SOOTHE Bio-Film Dosage",
+        rx_freq_label: "Application Frequency:",
+        rx_timing_label: "Optimal Administration Window:",
+        rx_timing_val: "15 minutes before meals to allow complete bio-scaffold hydration",
+        protocol_title: "3-Step Bio-Film Application Protocol:",
+        protocol_step1: "• <strong>1. TARGET:</strong> Dry hands; place bio-film directly over lesion. Okra mucilage adheres within seconds.",
+        protocol_step2: "• <strong>2. RELIEVE:</strong> Spilanthes alkylamides (Spilanthol) desensitize pain receptors within 5 minutes.",
+        protocol_step3: "• <strong>3. SOOTHE & SWALLOW:</strong> Do not peel off. The natural bio-scaffold dissolves and is 100% safe to swallow.",
+        timer_heading: "Next Reapplication Timer",
+        timer_desc: "Counts down the 4-6 hour protective bio-scaffold window",
+        btn_start_timer: "Start Timer",
+        healingForecastTitle: "7-Day Mucosal Healing Trajectory",
+        healingForecastSubtitle: "Projected lesion reduction: ORA-SOOTHE vs Untreated standard care",
+        btn_save_record: "Save Assessment Record",
+        previewPrintReport: "Preview Oncology Dossier",
+        btn_copy_doctor: "Copy Report for Oncology Team",
+        history_modal_title: "ORA-CARE Assessment Records",
+        btn_clear_history: "Clear History",
+        btn_close: "Close"
+      }
+    };
+
+    // Global State
+    const appState = {
+      lang: 'th',
+      currentTab: 'questionnaire',
+      referenceType: 'coin',
+      refRealMm: 20.0,
+      canvas: null,
+      ctx: null,
+      canvasImg: null,
+      refPos: { x: 140, y: 160 },
+      ulcerPos: { x: 340, y: 160 },
+      refRadiusPx: 65,
+      ulcerRadiusPx: 35,
+      measuredDiameterMm: 10.8,
+      lastEvaluation: null,
+      timerSec: 4 * 3600,
+      timerRunning: false,
+      timerHandle: null,
+      chartInstance: null
+    };
+
+    // Initialize application on window load
+    window.addEventListener('DOMContentLoaded', () => {
+      initCanvasTool();
+      initHealingChart();
+      handlePainSlider(4);
+    });
+
+    // Language Switcher
+    function setAppLanguage(lang) {
+      appState.lang = lang;
+      
+      const btnTh = document.getElementById('btnLangTh');
+      const btnEn = document.getElementById('btnLangEn');
+      if (lang === 'th') {
+        btnTh.className = "px-2.5 py-1 rounded-lg transition bg-brand-burgundy text-white shadow-xs";
+        btnEn.className = "px-2.5 py-1 rounded-lg transition text-gray-600 hover:text-black";
+      } else {
+        btnEn.className = "px-2.5 py-1 rounded-lg transition bg-brand-burgundy text-white shadow-xs";
+        btnTh.className = "px-2.5 py-1 rounded-lg transition text-gray-600 hover:text-black";
+      }
+
+      document.getElementById('bannerTagline').innerText = i18n[lang].bannerTagline;
+
+      // Translate all data-i18n tagged elements
+      document.querySelectorAll('[data-i18n]').forEach(el => {
+        const key = el.getAttribute('data-i18n');
+        if (i18n[lang] && i18n[lang][key]) {
+          el.innerHTML = i18n[lang][key];
+        }
+      });
+
+      handlePainSlider(document.getElementById('pain-slider').value);
+
+      if (appState.canvas) {
+        drawCanvas();
+        recalculateSizing();
+      }
+
+      if (appState.lastEvaluation) {
+        renderResult(appState.lastEvaluation);
+      }
+    }
+
+    // Switch between Option A (Questionnaire) and Option B (Photo)
+    function switchDiagnosticTab(tabKey) {
+      appState.currentTab = tabKey;
+      const tabQuiz = document.getElementById('tab-view-quiz');
+      const tabPhoto = document.getElementById('tab-view-photo');
+      const btnQuiz = document.getElementById('tab-btn-quiz');
+      const btnPhoto = document.getElementById('tab-btn-photo');
+
+      if (tabKey === 'questionnaire') {
+        tabQuiz.classList.remove('hidden');
+        tabPhoto.classList.add('hidden');
+        btnQuiz.className = "flex-1 py-2.5 px-3 rounded-xl text-xs sm:text-sm font-bold transition flex items-center justify-center gap-2 bg-brand-burgundy text-white shadow-xs";
+        btnPhoto.className = "flex-1 py-2.5 px-3 rounded-xl text-xs sm:text-sm font-bold transition flex items-center justify-center gap-2 text-gray-600 hover:text-gray-900";
+      } else {
+        tabPhoto.classList.remove('hidden');
+        tabQuiz.classList.add('hidden');
+        btnPhoto.className = "flex-1 py-2.5 px-3 rounded-xl text-xs sm:text-sm font-bold transition flex items-center justify-center gap-2 bg-brand-burgundy text-white shadow-xs";
+        btnQuiz.className = "flex-1 py-2.5 px-3 rounded-xl text-xs sm:text-sm font-bold transition flex items-center justify-center gap-2 text-gray-600 hover:text-gray-900";
+        setTimeout(() => {
+          resizeCanvasResponsive();
+          drawCanvas();
+          recalculateSizing();
+        }, 50);
+      }
+    }
+
+    // Handle Pain Slider & Update Live Feedback
+    function handlePainSlider(val) {
+      val = parseInt(val, 10);
+      document.getElementById('pain-num-display').innerText = val;
+      const isEn = appState.lang === 'en';
+      const textEl = document.getElementById('pain-text-display');
+      const emojiEl = document.getElementById('pain-emoji');
+
+      if (val === 0) {
+        textEl.innerText = isEn ? "No pain at all" : "ไม่เจ็บปวดเลย รู้สึกปกติ";
+        emojiEl.innerText = "😊";
+      } else if (val <= 3) {
+        textEl.innerText = isEn ? "Mild discomfort, slight stinging on touch" : "ปวดเล็กน้อย รู้สึกแสบเวลาสัมผัส";
+        emojiEl.innerText = "🙂";
+      } else if (val <= 6) {
+        textEl.innerText = isEn ? "Moderate pain, burning with eating" : "ปวดปานกลาง แสบร้อนเวลาเคี้ยวกลืน";
+        emojiEl.innerText = "😐";
+      } else if (val <= 8) {
+        textEl.innerText = isEn ? "Severe pain, swallowing is very difficult" : "ปวดมาก ทานอาหารและพูดลำบาก";
+        emojiEl.innerText = "😣";
+      } else {
+        textEl.innerText = isEn ? "Extreme unbearable mucosal agony" : "ปวดรุนแรงที่สุด ทนทานไม่ไหว";
+        emojiEl.innerText = "😫";
+      }
+    }
+
+    // Pathway 1: Evaluate Questionnaire
+    function evaluateQuiz() {
+      const pain = parseInt(document.getElementById('pain-slider').value, 10);
+      const swallow = document.querySelector('input[name="swallow_ability"]:checked').value;
+      const lesion = document.querySelector('input[name="lesion_type"]:checked').value;
+      const xero = document.querySelector('input[name="xerostomia"]:checked').value;
+      const isEn = appState.lang === 'en';
+
+      let grade = 1;
+      let gradeTitle = isEn ? "WHO Grade 1: Mild Mucositis" : "WHO Grade 1: แผลระดับเริ่มต้น (Mild Mucositis)";
+      let gradeDesc = isEn ? "Erythema and mild soreness; patient able to swallow solid regular foods." : "เยื่อบุแดงและแสบเล็กน้อย ยังสามารถรับประทานอาหารแข็งได้ปกติ";
+      let patchQty = isEn ? "1 Small Patch (1.0 × 1.0 cm)" : "1 แผ่นขนาดเล็ก (1.0 × 1.0 ซม.)";
+      let freq = isEn ? "Every 6 hours or as needed" : "ทุก 6 ชั่วโมง หรือเมื่อเริ่มมีอาการแสบ";
+
+      if (swallow === 'none') {
+        grade = 4;
+        gradeTitle = isEn ? "WHO Grade 4: Critical / Non-Alimentable" : "WHO Grade 4: แผลรุนแรงขั้นวิกฤติ (Non-alimentable)";
+        gradeDesc = isEn ? "Severe oral ulceration preventing any oral nutrition; urgent oncology support required." : "แผลลุกลามรุนแรง กลืนอาหารและน้ำไม่ได้เลย ต้องการการดูแลทางการแพทย์อย่างใกล้ชิด";
+        patchQty = isEn ? "2 Large Patches (Cover ulcer beds & swallow coating)" : "2 แผ่นใหญ่ (วางคลุมรอยแผลลึกและปล่อยให้ละลายเคลือบทางเดินอาหาร)";
+        freq = isEn ? "Every 4 hours continuously" : "ทุก 4 ชั่วโมงอย่างสม่ำเสมอ";
+      } else if (swallow === 'liquid' || lesion === 'multiple' || pain >= 8) {
+        grade = 3;
+        gradeTitle = isEn ? "WHO Grade 3: Severe Confluent Mucositis" : "WHO Grade 3: แผลรุนแรงลุกลาม (ทานได้เฉพาะของเหลว)";
+        gradeDesc = isEn ? "Confluent mucosal ulcerations; patient can only tolerate liquid intake." : "แผลหลุมขนาดใหญ่ ทานอาหารกึ่งแข็งไม่ได้ ดื่มได้เฉพาะน้ำซุปหรือของเหลว";
+        patchQty = isEn ? "1 Confluent Patch (2.5 × 3.5 cm)" : "1 แผ่นขนาดใหญ่พิเศษ (2.5 × 3.5 ซม. คลุมพื้นที่กว้าง)";
+        freq = isEn ? "Every 4 hours (15 min before liquid intake)" : "ทุก 4 ชั่วโมง (ก่อนจิบของเหลว 15 นาที)";
+      } else if (swallow === 'soft' || lesion === 'single_small' || pain >= 4) {
+        grade = 2;
+        gradeTitle = isEn ? "WHO Grade 2: Moderate Ulcerative Mucositis" : "WHO Grade 2: แผลหลุมปานกลาง (ทานอาหารอ่อน)";
+        gradeDesc = isEn ? "Painful discrete ulcers present; patient is able to swallow soft moist foods." : "พบแผลหลุมชัดเจน ต้องรับประทานอาหารอ่อน เช่น ข้าวต้ม เพื่อเลี่ยงการเสียดสี";
+        patchQty = isEn ? "1 Standard Patch (1.5 × 2.0 cm)" : "1 แผ่นมาตรฐาน (1.5 × 2.0 ซม. ครอบคลุมแผลมิดชิด)";
+        freq = isEn ? "Every 4 - 6 hours (15 min before meals)" : "ทุก 4 - 6 ชั่วโมง (แปะก่อนมื้ออาหาร 15 นาที)";
+      }
+
+      const evalData = {
+        mode: isEn ? "Option 1 (Clinical Questionnaire)" : "ตัวเลือก 1 (แบบประเมินอาการ)",
+        grade: grade,
+        gradeTitle: gradeTitle,
+        gradeDesc: gradeDesc,
+        pain: pain,
+        sizeText: lesion === 'erythema' ? (isEn ? "Erythema" : "รอยแดง") : (lesion === 'single_small' ? "<10 mm" : ">10 mm"),
+        patchQty: patchQty,
+        freq: freq,
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      };
+
+      renderResult(evalData);
+    }
+
+    // Pathway 2: Interactive Canvas Measurement (Calibrated)
+    function initCanvasTool() {
+      appState.canvas = document.getElementById('calibrationCanvas');
+      appState.ctx = appState.canvas.getContext('2d');
+      resizeCanvasResponsive();
+      setupCanvasEvents();
+      loadClinicalDemo('moderate');
+    }
+
+    function resizeCanvasResponsive() {
+      if (!appState.canvas) return;
+      const rect = appState.canvas.getBoundingClientRect();
+      appState.canvas.width = rect.width * 2 || 800;
+      appState.canvas.height = rect.height * 2 || 600;
+    }
+
+    function selectCalibrationReference(type) {
+      appState.referenceType = type;
+      document.querySelectorAll('.ref-card').forEach(c => {
+        c.className = "ref-card p-3 rounded-xl border-2 border-stone-200 text-center transition";
+      });
+
+      const active = document.getElementById(`ref-card-${type}`);
+      if (active) {
+        active.className = "ref-card p-3 rounded-xl border-2 border-brand-burgundy bg-brand-burgundy/5 text-center transition";
+      }
+
+      if (type === 'coin') appState.refRealMm = 20.0;
+      else if (type === 'uscoin') appState.refRealMm = 24.26;
+      else if (type === 'patch') appState.refRealMm = 12.0;
+      else if (type === 'swab') appState.refRealMm = 5.0;
+
+      recalculateSizing();
+      drawCanvas();
+    }
+
+    function changeRefRingRadius(val) {
+      appState.refRadiusPx = parseInt(val, 10) / 2;
+      document.getElementById('label-ref-ring-px').innerText = `${val} px`;
+      drawCanvas();
+      recalculateSizing();
+    }
+
+    function changeUlcerRingRadius(val) {
+      appState.ulcerRadiusPx = parseInt(val, 10) / 2;
+      document.getElementById('label-ulcer-ring-px').innerText = `${val} px`;
+      drawCanvas();
+      recalculateSizing();
+    }
+
+    function resetCanvasRings() {
+      if (!appState.canvas) return;
+      appState.refPos = { x: appState.canvas.width * 0.28, y: appState.canvas.height * 0.5 };
+      appState.ulcerPos = { x: appState.canvas.width * 0.72, y: appState.canvas.height * 0.5 };
+      drawCanvas();
+      recalculateSizing();
+    }
+
+    function recalculateSizing() {
+      const refDiameterPx = appState.refRadiusPx * 2;
+      if (refDiameterPx <= 0) return;
+
+      const mmPerPx = appState.refRealMm / refDiameterPx;
+      const ulcerDiameterPx = appState.ulcerRadiusPx * 2;
+      const ulcerDiameterMm = (ulcerDiameterPx * mmPerPx).toFixed(1);
+      const ulcerRadiusMm = ulcerDiameterMm / 2;
+      const ulcerAreaMm2 = (Math.PI * ulcerRadiusMm * ulcerRadiusMm).toFixed(1);
+
+      appState.measuredDiameterMm = parseFloat(ulcerDiameterMm);
+      document.getElementById('display-ulcer-diameter').innerText = ulcerDiameterMm;
+      
+      const isEn = appState.lang === 'en';
+      document.getElementById('display-ulcer-area').innerText = isEn 
+        ? `Area: ~${ulcerAreaMm2} mm² (Resolution: ${(mmPerPx * 1000).toFixed(0)} μm/px)`
+        : `พื้นที่ประมาณ: ${ulcerAreaMm2} mm² (ความละเอียด: ${(mmPerPx * 1000).toFixed(0)} μm/px)`;
+    }
+
+    function drawCanvas() {
+      if (!appState.ctx || !appState.canvas) return;
+      const ctx = appState.ctx;
+      const w = appState.canvas.width;
+      const h = appState.canvas.height;
+      ctx.clearRect(0, 0, w, h);
+
+      if (appState.canvasImg) {
+        ctx.drawImage(appState.canvasImg, 0, 0, w, h);
+      } else {
+        const bgGrad = ctx.createLinearGradient(0, 0, w, h);
+        bgGrad.addColorStop(0, '#B8455B');
+        bgGrad.addColorStop(1, '#661628');
+        ctx.fillStyle = bgGrad;
+        ctx.fillRect(0, 0, w, h);
+      }
+
+      const isEn = appState.lang === 'en';
+
+      // 1. Gold Reference Reticle
+      const ref = appState.refPos;
+      const refR = appState.refRadiusPx;
+      ctx.save();
+      ctx.beginPath();
+      ctx.arc(ref.x, ref.y, refR, 0, Math.PI * 2);
+      ctx.lineWidth = 4;
+      ctx.strokeStyle = '#C5A038';
+      ctx.fillStyle = 'rgba(197, 160, 56, 0.25)';
+      ctx.fill();
+      ctx.stroke();
+
+      ctx.beginPath();
+      ctx.moveTo(ref.x - 10, ref.y); ctx.lineTo(ref.x + 10, ref.y);
+      ctx.moveTo(ref.x, ref.y - 10); ctx.lineTo(ref.x, ref.y + 10);
+      ctx.lineWidth = 2;
+      ctx.strokeStyle = '#FFFFFF';
+      ctx.stroke();
+
+      ctx.font = 'bold 20px Plus Jakarta Sans, sans-serif';
+      ctx.fillStyle = '#FFFFFF';
+      ctx.shadowColor = 'black';
+      ctx.shadowBlur = 4;
+      ctx.fillText(isEn ? `Standard: ${appState.refRealMm} mm` : `ตัวเทียบ: ${appState.refRealMm} มม.`, ref.x - 60, ref.y - refR - 12);
+      ctx.restore();
+
+      // 2. Red Ulcer Reticle
+      const ulcer = appState.ulcerPos;
+      const ulcerR = appState.ulcerRadiusPx;
+      ctx.save();
+      ctx.beginPath();
+      ctx.arc(ulcer.x, ulcer.y, ulcerR, 0, Math.PI * 2);
+      ctx.lineWidth = 4;
+      ctx.strokeStyle = '#EF4444';
+      ctx.fillStyle = 'rgba(239, 68, 68, 0.3)';
+      ctx.fill();
+      ctx.stroke();
+
+      ctx.beginPath();
+      ctx.moveTo(ulcer.x - 10, ulcer.y); ctx.lineTo(ulcer.x + 10, ulcer.y);
+      ctx.moveTo(ulcer.x, ulcer.y - 10); ctx.lineTo(ulcer.x, ulcer.y + 10);
+      ctx.lineWidth = 2;
+      ctx.strokeStyle = '#FFFFFF';
+      ctx.stroke();
+
+      ctx.font = 'bold 20px Plus Jakarta Sans, sans-serif';
+      ctx.fillStyle = '#FFFFFF';
+      ctx.shadowColor = 'black';
+      ctx.shadowBlur = 4;
+      ctx.fillText(isEn ? `Ulcer: ${appState.measuredDiameterMm} mm` : `แผล: ${appState.measuredDiameterMm} มม.`, ulcer.x - 45, ulcer.y - ulcerR - 12);
+      ctx.restore();
+    }
+
+    function setupCanvasEvents() {
+      let activeDrag = null;
+
+      function getCoord(e) {
+        const rect = appState.canvas.getBoundingClientRect();
+        const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+        const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+        const scaleX = appState.canvas.width / rect.width;
+        const scaleY = appState.canvas.height / rect.height;
+        return {
+          x: (clientX - rect.left) * scaleX,
+          y: (clientY - rect.top) * scaleY
+        };
+      }
+
+      function handleDown(e) {
+        const pt = getCoord(e);
+        const dUlcer = Math.hypot(pt.x - appState.ulcerPos.x, pt.y - appState.ulcerPos.y);
+        const dRef = Math.hypot(pt.x - appState.refPos.x, pt.y - appState.refPos.y);
+
+        if (dUlcer < appState.ulcerRadiusPx + 30) {
+          activeDrag = 'ulcer';
+        } else if (dRef < appState.refRadiusPx + 30) {
+          activeDrag = 'ref';
+        }
+      }
+
+      function handleMove(e) {
+        if (!activeDrag) return;
+        e.preventDefault();
+        const pt = getCoord(e);
+        if (activeDrag === 'ref') appState.refPos = pt;
+        if (activeDrag === 'ulcer') appState.ulcerPos = pt;
+        drawCanvas();
+        recalculateSizing();
+      }
+
+      function handleUp() {
+        activeDrag = null;
+      }
+
+      appState.canvas.addEventListener('mousedown', handleDown);
+      window.addEventListener('mousemove', handleMove);
+      window.addEventListener('mouseup', handleUp);
+
+      appState.canvas.addEventListener('touchstart', handleDown, { passive: false });
+      window.addEventListener('touchmove', handleMove, { passive: false });
+      window.addEventListener('touchend', handleUp);
+    }
+
+    function loadUserPhoto(e) {
+      const file = e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = function(evt) {
+        const img = new Image();
+        img.onload = function() {
+          appState.canvasImg = img;
+          drawCanvas();
+          recalculateSizing();
+        };
+        img.src = evt.target.result;
+      };
+      reader.readAsDataURL(file);
+    }
+
+    function loadClinicalDemo(type) {
+      const off = document.createElement('canvas');
+      off.width = 800;
+      off.height = 600;
+      const oCtx = off.getContext('2d');
+
+      const grad = oCtx.createRadialGradient(400, 300, 60, 400, 300, 450);
+      grad.addColorStop(0, '#C9536B');
+      grad.addColorStop(0.65, '#962B42');
+      grad.addColorStop(1, '#571020');
+      oCtx.fillStyle = grad;
+      oCtx.fillRect(0, 0, 800, 600);
+
+      // Draw Standard Coin (20mm Thai Baht representation)
+      oCtx.save();
+      oCtx.beginPath();
+      oCtx.arc(220, 300, 65, 0, Math.PI * 2);
+      const coinGrad = oCtx.createLinearGradient(160, 240, 280, 360);
+      coinGrad.addColorStop(0, '#F3F4F6');
+      coinGrad.addColorStop(0.5, '#9CA3AF');
+      coinGrad.addColorStop(1, '#4B5563');
+      oCtx.fillStyle = coinGrad;
+      oCtx.fill();
+      oCtx.lineWidth = 4;
+      oCtx.strokeStyle = '#D1D5DB';
+      oCtx.stroke();
+      oCtx.fillStyle = '#1F2937';
+      oCtx.font = 'bold 16px sans-serif';
+      oCtx.textAlign = 'center';
+      oCtx.fillText('REF STANDARD', 220, 306);
+      oCtx.restore();
+
+      // Simulated Ulcer
+      let ulcerR = 20; // mild (~6 mm)
+      if (type === 'moderate') ulcerR = 35; // (~10.8 mm)
+      if (type === 'severe') ulcerR = 56;   // (~17.2 mm)
+
+      oCtx.save();
+      oCtx.beginPath();
+      oCtx.arc(560, 300, ulcerR + 15, 0, Math.PI * 2);
+      oCtx.fillStyle = 'rgba(239, 68, 68, 0.5)';
+      oCtx.filter = 'blur(8px)';
+      oCtx.fill();
+      oCtx.filter = 'none';
+
+      oCtx.beginPath();
+      oCtx.arc(560, 300, ulcerR, 0, Math.PI * 2);
+      const ulcerGrad = oCtx.createRadialGradient(560, 300, 0, 560, 300, ulcerR);
+      ulcerGrad.addColorStop(0, '#FFFBEB');
+      ulcerGrad.addColorStop(0.65, '#FEF08A');
+      ulcerGrad.addColorStop(1, '#FCA5A5');
+      oCtx.fillStyle = ulcerGrad;
+      oCtx.fill();
+      oCtx.restore();
+
+      const img = new Image();
+      img.onload = function() {
+        appState.canvasImg = img;
+        appState.refRadiusPx = 65;
+        appState.ulcerRadiusPx = ulcerR;
+        document.getElementById('slider-ref-radius').value = 130;
+        document.getElementById('slider-ulcer-radius').value = ulcerR * 2;
+        document.getElementById('label-ref-ring-px').innerText = '130 px';
+        document.getElementById('label-ulcer-ring-px').innerText = `${ulcerR * 2} px`;
+
+        appState.refPos = { x: 220, y: 300 };
+        appState.ulcerPos = { x: 560, y: 300 };
+
+        drawCanvas();
+        recalculateSizing();
+      };
+      img.src = off.toDataURL();
+    }
+
+    function evaluatePhotoSizing() {
+      const dia = appState.measuredDiameterMm || 0;
+      const isEn = appState.lang === 'en';
+
+      let grade = 1;
+      let gradeTitle = isEn ? "WHO Grade 1: Localized Mucositis" : "WHO Grade 1: แผลขนาดเล็กเริ่มต้น";
+      let gradeDesc = isEn 
+        ? `Measured diameter is ~${dia} mm. Normal eating preserved; apply patch to shield against friction.`
+        : `แผลที่วัดได้มีขนาดเส้นผ่านศูนย์กลาง ~${dia} มม. ยังทานอาหารได้ปกติ ควรแปะเพื่อป้องกันการเสียดสี`;
+      let patchQty = isEn ? "1 Small Precision Patch (1.0 × 1.0 cm)" : "1 แผ่นขนาดเล็ก (1.0 × 1.0 ซม.)";
+      let freq = isEn ? "Every 6 hours as needed" : "ทุก 6 ชั่วโมง หรือเมื่อมีอาการปวด";
+
+      if (dia >= 15.0) {
+        grade = 3;
+        gradeTitle = isEn ? "WHO Grade 3: Extensive Confluent Ulcer" : "WHO Grade 3: แผลขนาดใหญ่รวมตัว (>15 mm)";
+        gradeDesc = isEn 
+          ? `Extensive ulceration (${dia} mm). High risk of mucosal bleeding and swallowing pain.`
+          : `แผลมีขนาดกว้างถึง ${dia} มม. มีความเสี่ยงต่อการกลืนลำบากและเจ็บปวดอย่างรุนแรง`;
+        patchQty = isEn ? "1 Confluent Matrix Patch (2.5 × 3.5 cm)" : "1 แผ่นขนาดใหญ่พิเศษ (2.5 × 3.5 ซม. คลุมพื้นที่กว้าง)";
+        freq = isEn ? "Every 4 hours continuously" : "ทุก 4 ชั่วโมงอย่างสม่ำเสมอ";
+      } else if (dia >= 6.0) {
+        grade = 2;
+        gradeTitle = isEn ? "WHO Grade 2: Moderate Ulcerative Mucositis" : "WHO Grade 2: แผลขนาดปานกลาง (6-14 mm)";
+        gradeDesc = isEn 
+          ? `Ulcer diameter is ~${dia} mm. Soft diet recommended; full bio-scaffold coverage advised.`
+          : `ขนาดแผล ~${dia} มม. แนะนำรับประทานอาหารอ่อน และใช้ฟิล์มคลุมเพื่อลดการอักเสบ`;
+        patchQty = isEn ? "1 Standard Oral Patch (1.5 × 2.0 cm)" : "1 แผ่นมาตรฐาน (1.5 × 2.0 ซม. ครอบคลุมแผลมิดชิด)";
+        freq = isEn ? "Every 4-6 hours (15 min before meals)" : "ทุก 4-6 ชั่วโมง (ก่อนมื้ออาหาร 15 นาที)";
+      }
+
+      const evalData = {
+        mode: isEn ? "Option 2 (Photo Scale Calibration)" : "ตัวเลือก 2 (ภาพถ่ายเทียบสเกล)",
+        grade: grade,
+        gradeTitle: gradeTitle,
+        gradeDesc: gradeDesc,
+        pain: isEn ? "Assessed via size" : "ประเมินตามสเกล",
+        sizeText: `${dia} mm`,
+        patchQty: patchQty,
+        freq: freq,
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      };
+
+      renderResult(evalData);
+    }
+
+    // Render Result Views
+    function renderResult(data) {
+      appState.lastEvaluation = data;
+      const resSection = document.getElementById('section-result');
+      resSection.classList.remove('hidden');
+
+      document.getElementById('res-grade-title').innerText = data.gradeTitle;
+      document.getElementById('res-grade-desc').innerText = data.gradeDesc;
+      document.getElementById('result-mode-tag').innerText = data.mode;
+      document.getElementById('res-stat-pain').innerText = data.pain === 'Assessed via size' || data.pain === 'ประเมินตามสเกล' ? data.pain : `${data.pain} / 10`;
+      document.getElementById('res-stat-size').innerText = data.sizeText;
+      document.getElementById('res-stat-time').innerText = data.timestamp;
+
+      const pill = document.getElementById('res-grade-pill');
+      pill.innerText = `WHO Grade ${data.grade}`;
+      if (data.grade === 1) pill.className = "px-3.5 py-2 rounded-2xl font-black text-sm bg-emerald-100 text-emerald-800 border border-emerald-200 shrink-0";
+      else if (data.grade === 2) pill.className = "px-3.5 py-2 rounded-2xl font-black text-sm bg-amber-100 text-amber-800 border border-amber-200 shrink-0";
+      else pill.className = "px-3.5 py-2 rounded-2xl font-black text-sm bg-rose-100 text-rose-800 border border-rose-200 shrink-0";
+
+      document.getElementById('res-rx-patch-qty').innerText = data.patchQty;
+      document.getElementById('res-rx-freq').innerText = data.freq;
+
+      updateChartWithData(data.grade);
+      updateModalFields(data);
+
+      resSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+
+    // 4-Hour Countdown Timer
+    function toggleBioTimer() {
+      const btn = document.getElementById('timer-toggle-btn');
+      const isEn = appState.lang === 'en';
+
+      if (appState.timerRunning) {
+        clearInterval(appState.timerHandle);
+        appState.timerRunning = false;
+        btn.innerText = isEn ? "Start Timer" : "เริ่มนับเวลา";
+      } else {
+        appState.timerRunning = true;
+        btn.innerText = isEn ? "Pause Timer" : "หยุดชั่วคราว";
+
+        appState.timerHandle = setInterval(() => {
+          if (appState.timerSec > 0) {
+            appState.timerSec--;
+            const h = String(Math.floor(appState.timerSec / 3600)).padStart(2, '0');
+            const m = String(Math.floor((appState.timerSec % 3600) / 60)).padStart(2, '0');
+            const s = String(appState.timerSec % 60).padStart(2, '0');
+            document.getElementById('countdown-clock').innerText = `${h}:${m}:${s}`;
+          } else {
+            clearInterval(appState.timerHandle);
+            appState.timerRunning = false;
+            btn.innerText = isEn ? "Time for reapplication!" : "ถึงเวลาแปะแผ่นใหม่!";
+          }
+        }, 1000);
+      }
+    }
+
+    // Chart.js 7-Day Healing Trajectory
+    function initHealingChart() {
+      const ctx = document.getElementById('healingChartCanvas').getContext('2d');
+      appState.chartInstance = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: ['Day 1', 'Day 2', 'Day 3', 'Day 4', 'Day 5', 'Day 6', 'Day 7'],
+          datasets: [
+            {
+              label: 'ORA-SOOTHE Active Bio-Film (mm)',
+              data: [10.8, 8.2, 5.8, 3.4, 1.8, 0.7, 0.0],
+              borderColor: '#6B143C',
+              backgroundColor: 'rgba(107, 20, 60, 0.1)',
+              borderWidth: 3,
+              fill: true,
+              tension: 0.35,
+              pointBackgroundColor: '#C5A038',
+              pointRadius: 4
+            },
+            {
+              label: 'Untreated Standard Care (mm)',
+              data: [10.8, 10.2, 9.4, 8.1, 6.7, 5.2, 3.9],
+              borderColor: '#9ca3af',
+              borderWidth: 2,
+              borderDash: [5, 5],
+              fill: false,
+              tension: 0.2,
+              pointRadius: 3
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { position: 'top', labels: { boxWidth: 12, font: { size: 11 } } }
+          },
+          scales: {
+            y: { beginAtZero: true, title: { display: true, text: 'Ulcer Diameter (mm)' }, grid: { color: '#f3f4f6' } },
+            x: { grid: { display: false } }
+          }
+        }
+      });
+    }
+
+    function updateChartWithData(grade) {
+      if (!appState.chartInstance) return;
+      let base = grade === 1 ? 4.5 : (grade === 2 ? 10.8 : 18.0);
+      const orsoothe = [base, +(base*0.75).toFixed(1), +(base*0.52).toFixed(1), +(base*0.3).toFixed(1), +(base*0.14).toFixed(1), +(base*0.05).toFixed(1), 0];
+      const untreated = [base, +(base*0.95).toFixed(1), +(base*0.87).toFixed(1), +(base*0.76).toFixed(1), +(base*0.62).toFixed(1), +(base*0.48).toFixed(1), +(base*0.35).toFixed(1)];
+      
+      appState.chartInstance.data.datasets[0].data = orsoothe;
+      appState.chartInstance.data.datasets[1].data = untreated;
+      appState.chartInstance.update();
+    }
+
+    // Modal & Export Functions
+    function updateModalFields(data) {
+      document.getElementById('modalWhoGrade').innerText = `WHO Grade ${data.grade}`;
+      document.getElementById('modalDiameter').innerText = data.sizeText;
+      document.getElementById('modalPain').innerText = data.pain === 'Assessed via size' || data.pain === 'ประเมินตามสเกล' ? data.pain : `${data.pain} / 10`;
+      document.getElementById('modalPatchType').innerText = data.patchQty.split('(')[0];
+      document.getElementById('modalInstructions').innerText = `${data.patchQty} • ${data.freq}. 100% edible and safe to swallow.`;
+      document.getElementById('modalDateStamp').innerText = new Date().toLocaleDateString();
+    }
+
+    function openFullReportModal() {
+      document.getElementById('reportModal').classList.remove('hidden');
+    }
+    function closeReportModal() {
+      document.getElementById('reportModal').classList.add('hidden');
+    }
+
+    function toggleHowItWorks(show) {
+      const modal = document.getElementById('howItWorksModal');
+      if (show) modal.classList.remove('hidden');
+      else modal.classList.add('hidden');
+    }
+
+    // History Records (LocalStorage)
+    function saveRecordToLocal() {
+      if (!appState.lastEvaluation) return;
+      const history = JSON.parse(localStorage.getItem('oracare_records') || '[]');
+      history.unshift({
+        ...appState.lastEvaluation,
+        fullDate: new Date().toLocaleDateString()
+      });
+      if (history.length > 25) history.pop();
+      localStorage.setItem('oracare_records', JSON.stringify(history));
+
+      showToast(appState.lang === 'en' ? "✓ Assessment saved to history!" : "✓ บันทึกประวัติเรียบร้อยแล้ว ตรวจสอบได้ในปุ่มประวัติ");
+    }
+
+    function openHistoryModal() {
+      const modal = document.getElementById('history-modal');
+      const container = document.getElementById('history-container');
+      const history = JSON.parse(localStorage.getItem('oracare_records') || '[]');
+      const isEn = appState.lang === 'en';
+
+      if (history.length === 0) {
+        container.innerHTML = `<div class="text-center py-8 text-stone-400">${isEn ? 'No assessment records found.' : 'ยังไม่มีประวัติการประเมิน'}</div>`;
+      } else {
+        container.innerHTML = history.map(item => `
+          <div class="p-3 bg-stone-50 border border-stone-200 rounded-2xl space-y-1">
+            <div class="flex justify-between items-center">
+              <strong class="text-brand-burgundy font-bold">${item.gradeTitle.split(':')[0]}</strong>
+              <span class="text-[10px] text-stone-400 font-mono">${item.fullDate || ''} ${item.timestamp}</span>
+            </div>
+            <div class="text-[11px] text-stone-700 font-semibold">${item.patchQty}</div>
+            <div class="text-[10px] text-stone-500">${item.mode} | ${isEn ? 'Size' : 'ขนาด'}: ${item.sizeText}</div>
+          </div>
+        `).join('');
+      }
+      modal.classList.remove('hidden');
+    }
+
+    function closeHistoryModal() {
+      document.getElementById('history-modal').classList.add('hidden');
+    }
+
+    function clearAllHistory() {
+      localStorage.removeItem('oracare_records');
+      openHistoryModal();
+    }
+
+    function copyDoctorReport() {
+      if (!appState.lastEvaluation) return;
+      const ev = appState.lastEvaluation;
+      const isEn = appState.lang === 'en';
+
+      let text = "";
+      if (isEn) {
+        text = `[ORA-CARE Clinical Mucositis Assessment]
+• Clinical Grade: ${ev.gradeTitle}
+• Assessment Mode: ${ev.mode}
+• Timestamp: ${new Date().toLocaleDateString()} ${ev.timestamp}
+• Dimension/Severity: ${ev.sizeText} (Pain Score: ${ev.pain}/10)
+• Prescribed ORA-SOOTHE: ${ev.patchQty}
+• Reapplication Window: ${ev.freq} (15 mins prior to meals)
+• Bio-Film Mechanism: 75% Okra (4-6h mucoadhesion), 8% Spilanthol (5-min analgesia), 15% Riceberry anthocyanins (fibroblast repair).`;
+      } else {
+        text = `[รายงานอาการผู้ป่วย ORA-CARE สำหรับแพทย์และทีมดูแลรักษา]
+• ระดับความรุนแรง: ${ev.gradeTitle}
+• วิธีการประเมิน: ${ev.mode}
+• วันและเวลาที่ประเมิน: ${new Date().toLocaleDateString()} ${ev.timestamp}
+• ขนาดแผล/ความรุนแรง: ${ev.sizeText} (ระดับความปวด: ${ev.pain}/10)
+• ปริมาณ ORA-SOOTHE ที่แนะนำ: ${ev.patchQty}
+• ความถี่การแปะ: ${ev.freq} (ก่อนมื้ออาหาร 15 นาที)
+• สารออกฤทธิ์ทางชีวภาพ: คราดหัวแหวน (ระงับปวดใน 5 นาที), เมือกกระเจี๊ยบ (เกาะเยื่อบุ 4-6 ชม.), ข้าวไรซ์เบอร์รี่ (กระตุ้นไฟโบรบลาสต์สมานเซลล์).`;
+      }
+
+      navigator.clipboard?.writeText(text);
+      showToast(isEn ? "✓ Clinical summary copied to clipboard!" : "✓ คัดลอกรายงานส่งแพทย์เรียบร้อยแล้ว (พร้อมวางใน LINE)");
+    }
+
+    function showToast(msg) {
+      const toast = document.getElementById('copy-toast');
+      document.getElementById('toast-message').innerText = msg;
+      toast.classList.remove('hidden');
+      setTimeout(() => toast.classList.add('hidden'), 3500);
+    }
+  </script>
+</body>
+</html>
